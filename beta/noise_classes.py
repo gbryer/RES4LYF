@@ -684,7 +684,7 @@ NOISE_GENERATOR_NAMES_SIMPLE = tuple(NOISE_GENERATOR_CLASSES_SIMPLE.keys())
 
 
 @precision_tool.cast_tensor
-def prepare_noise(latent_image, seed, noise_type, noise_inds=None, alpha=1.0, k=1.0): # adapted from comfy/sample.py: https://github.com/comfyanonymous/ComfyUI
+def prepare_noise(latent_image, seed, noise_type, noise_inds=None, alpha=1.0, k=1.0, var_seed=None, var_strength=0.0): # adapted from comfy/sample.py: https://github.com/comfyanonymous/ComfyUI
     #optional arg skip can be used to skip and discard x number of noise generations for a given seed
     noise_func = NOISE_GENERATOR_CLASSES.get(noise_type)(x=latent_image, seed=seed, sigma_min=0.0291675, sigma_max=14.614642)                                          # WARNING: HARDCODED SDXL SIGMA RANGE!
 
@@ -694,7 +694,25 @@ def prepare_noise(latent_image, seed, noise_type, noise_inds=None, alpha=1.0, k=
 
     # from here until return is very similar to comfy/sample.py 
     if noise_inds is None:
-        return noise_func(sigma=14.614642, sigma_next=0.0291675)
+        base_noise = noise_func(sigma=14.614642, sigma_next=0.0291675)
+        
+        # SwarmUI-style variation seed implementation
+        if var_seed is not None and var_strength > 0.0:
+            # Generate variation noise with different seed
+            var_noise_func = NOISE_GENERATOR_CLASSES.get(noise_type)(x=latent_image, seed=var_seed, sigma_min=0.0291675, sigma_max=14.614642)
+            
+            if noise_type == "fractal":
+                var_noise_func.alpha = alpha
+                var_noise_func.k = k
+                
+            var_noise = var_noise_func(sigma=14.614642, sigma_next=0.0291675)
+            
+            # SLERP blend between base and variation noise
+            from ..latents import slerp
+            blended_noise = slerp(base_noise, var_noise, var_strength)
+            return blended_noise
+            
+        return base_noise
 
     unique_inds, inverse = np.unique(noise_inds, return_inverse=True)
     noises = []
@@ -704,4 +722,26 @@ def prepare_noise(latent_image, seed, noise_type, noise_inds=None, alpha=1.0, k=
             noises.append(noise)
     noises = [noises[i] for i in inverse]
     noises = torch.cat(noises, axis=0)
+    
+    # Apply variation blending to batch noises if specified
+    if var_seed is not None and var_strength > 0.0:
+        var_noise_func = NOISE_GENERATOR_CLASSES.get(noise_type)(x=latent_image, seed=var_seed, sigma_min=0.0291675, sigma_max=14.614642)
+        
+        if noise_type == "fractal":
+            var_noise_func.alpha = alpha
+            var_noise_func.k = k
+            
+        var_noises = []
+        for i in range(unique_inds[-1]+1):
+            var_noise = var_noise_func(size = [1] + list(latent_image.size())[1:], dtype=latent_image.dtype, layout=latent_image.layout, device=latent_image.device)
+            if i in unique_inds:
+                var_noises.append(var_noise)
+        var_noises = [var_noises[i] for i in inverse]
+        var_noises = torch.cat(var_noises, axis=0)
+        
+        # SLERP blend between base and variation noises
+        from ..latents import slerp
+        blended_noises = slerp(noises, var_noises, var_strength)
+        return blended_noises
+    
     return noises

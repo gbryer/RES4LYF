@@ -91,6 +91,8 @@ class SharkSampler:
                 "noise_type_init": (NOISE_GENERATOR_NAMES_SIMPLE, {"default": "gaussian"}),
                 "noise_stdev":     ("FLOAT",                      {"default": 1.0, "min": -10000.0, "max": 10000.0, "step":0.01, "round": False, }),
                 "noise_seed":      ("INT",                        {"default": 0,   "min": -1,       "max": 0xffffffffffffffff}),
+                "var_seed":        ("INT",                        {"default": -1,  "min": -1,       "max": 0xffffffffffffffff, "tooltip": "Variation seed for SwarmUI-style noise blending. Set to -1 to disable."}),
+                "var_strength":    ("FLOAT",                      {"default": 0.0, "min": 0.0,      "max": 1.0,      "step":0.01, "round": False, "tooltip": "Strength of variation seed blending (0.0 = base seed only, 1.0 = variation seed only)"}),
                 "sampler_mode":    (['unsample', 'standard', 'resample'], {"default": "standard"}),
                 "scheduler":       (get_res4lyf_scheduler_list(), {"default": "beta57"},),
                 "steps":           ("INT",                        {"default": 30,  "min": 1,        "max": 10000.0}),
@@ -147,6 +149,8 @@ class SharkSampler:
             k_init             : float                  =  1.0,
             cfgpp              : float                  =  0.0,
             noise_seed         : int                    = -1,
+            var_seed           : int                    = -1,
+            var_strength       : float                  =  0.0,
             options                                     = None,
             sde_noise                                   = None,
             sde_noise_steps    : int                    =  1,
@@ -541,18 +545,35 @@ class SharkSampler:
                     else:
                         RESplain("Initial latent noise seed: ", seed, debug=True)
                         
-                        noise_sampler_init = NOISE_GENERATOR_CLASSES_SIMPLE.get(noise_type_init)(x=x, seed=seed, sigma_max=sigma_max, sigma_min=sigma_min)
-                    
-                        if noise_type_init == "fractal":
-                            noise_sampler_init.alpha = alpha_init
-                            noise_sampler_init.k     = k_init
-                            noise_sampler_init.scale = 0.1
-                            
-                        """if EO("rare_noise"):
-                            noise, _, _ = sample_most_divergent_noise(noise_sampler_init, sigma_max, sigma_min, EO("rare_noise", 100))
+                        # SwarmUI-style variation seed implementation
+                        if var_seed != -1 and var_strength > 0.0:
+                            from .noise_classes import prepare_noise
+                            # Use prepare_noise with variation parameters
+                            noise = prepare_noise(
+                                latent_image=x, 
+                                seed=seed, 
+                                noise_type=noise_type_init, 
+                                alpha=alpha_init, 
+                                k=k_init,
+                                var_seed=var_seed,
+                                var_strength=var_strength
+                            )
+                            # Scale the noise appropriately  
+                            noise = noise * (sigma_max * noise_stdev) / sigma_max if sigma_max != 0 else noise
                         else:
-                            noise = noise_sampler_init(sigma=sigma_max * noise_stdev, sigma_next=sigma_min)"""
-                        noise = noise_sampler_init(sigma=sigma_max * noise_stdev, sigma_next=sigma_min)          # is sigma_max * noise_stdev really a good idea here?
+                            # Original noise generation path
+                            noise_sampler_init = NOISE_GENERATOR_CLASSES_SIMPLE.get(noise_type_init)(x=x, seed=seed, sigma_max=sigma_max, sigma_min=sigma_min)
+                        
+                            if noise_type_init == "fractal":
+                                noise_sampler_init.alpha = alpha_init
+                                noise_sampler_init.k     = k_init
+                                noise_sampler_init.scale = 0.1
+                                
+                            """if EO("rare_noise"):
+                                noise, _, _ = sample_most_divergent_noise(noise_sampler_init, sigma_max, sigma_min, EO("rare_noise", 100))
+                            else:
+                                noise = noise_sampler_init(sigma=sigma_max * noise_stdev, sigma_next=sigma_min)"""
+                            noise = noise_sampler_init(sigma=sigma_max * noise_stdev, sigma_next=sigma_min)          # is sigma_max * noise_stdev really a good idea here?
                         
                         
 
@@ -904,6 +925,8 @@ class SharkSampler_Beta:
                 "denoise":         ("FLOAT",                      {"default": 1.0, "min": -10000.0, "max": 10000.0, "step":0.01}),
                 "cfg":             ("FLOAT",                      {"default": 5.5, "min": -10000.0, "max": 10000.0, "step":0.01, "round": False, "tooltip": "Negative values use channelwise CFG." }),
                 "seed":            ("INT",                        {"default": 0,   "min": -1,       "max": 0xffffffffffffffff}),
+                "var_seed":        ("INT",                        {"default": -1,  "min": -1,       "max": 0xffffffffffffffff, "tooltip": "Variation seed for SwarmUI-style noise blending. Set to -1 to disable."}),
+                "var_strength":    ("FLOAT",                      {"default": 0.0, "min": 0.0,      "max": 1.0,      "step":0.01, "round": False, "tooltip": "Strength of variation seed blending (0.0 = base seed only, 1.0 = variation seed only)"}),
                 "sampler_mode": (['unsample', 'standard', 'resample'], {"default": "standard"}),
                 },
             "optional": {
@@ -953,6 +976,8 @@ class SharkSampler_Beta:
             k_init          : float                  =  1.0,
             cfgpp           : float                  =  0.0,
             seed            : int                    = -1,
+            var_seed        : int                    = -1,
+            var_strength    : float                  =  0.0,
             options                                  = None,
             sde_noise                                = None,
             sde_noise_steps : int                    =  1,
@@ -997,6 +1022,8 @@ class SharkSampler_Beta:
             sampler         = sampler, 
             cfgpp           = cfgpp, 
             noise_seed      = seed, 
+            var_seed        = var_seed,
+            var_strength    = var_strength,
             options         = options, 
             sde_noise       = sde_noise, 
             sde_noise_steps = sde_noise_steps, 
@@ -1406,6 +1433,8 @@ class ClownsharKSampler_Beta:
                     "denoise":      ("FLOAT",                      {"default": 1.0, "min": -10000, "max": MAX_STEPS, "step":0.01}),
                     "cfg":          ("FLOAT",                      {"default": 5.5, "min": -100.0, "max": 100.0,     "step":0.01, "round": False, }),
                     "seed":         ("INT",                        {"default": 0,   "min": -1,     "max": 0xffffffffffffffff}),
+                    "var_seed":     ("INT",                        {"default": -1,  "min": -1,     "max": 0xffffffffffffffff, "tooltip": "Variation seed for SwarmUI-style noise blending. Set to -1 to disable."}),
+                    "var_strength": ("FLOAT",                      {"default": 0.0, "min": 0.0,    "max": 1.0,      "step":0.01, "round": False, "tooltip": "Strength of variation seed blending (0.0 = base seed only, 1.0 = variation seed only)"}),
                     "sampler_mode": (['unsample', 'standard', 'resample'], {"default": "standard"}),
                     "bongmath":     ("BOOLEAN",                    {"default": True}),
                     },
@@ -1442,6 +1471,8 @@ class ClownsharKSampler_Beta:
             scheduler                     : str                    = "beta57", 
             cfg                           : float                  = 1.0, 
             seed                          : int                    = -1, 
+            var_seed                      : int                    = -1,
+            var_strength                  : float                  = 0.0,
             positive                                               = None, 
             negative                                               = None, 
             latent_image                  : Optional[dict[Tensor]] = None, 
@@ -1782,6 +1813,8 @@ class ClownsharKSampler_Beta:
             sampler         = sampler, 
             cfgpp           = cfgpp, 
             noise_seed      = seed, 
+            var_seed        = var_seed,
+            var_strength    = var_strength,
             options         = options_mgr.as_dict(), 
             sde_noise       = sde_noise, 
             sde_noise_steps = sde_noise_steps, 
@@ -1886,6 +1919,8 @@ class ClownSampler_Beta:
             scheduler                     : str                    = "beta57", 
             cfg                           : float                  = 1.0, 
             seed                          : int                    = -1, 
+            var_seed                      : int                    = -1,
+            var_strength                  : float                  = 0.0,
             positive                                               = None, 
             negative                                               = None, 
             latent_image                  : Optional[dict[Tensor]] = None, 
@@ -2424,6 +2459,8 @@ class BongSampler:
             sampler         = sampler, 
             cfgpp           = cfgpp, 
             noise_seed      = seed, 
+            var_seed        = var_seed,
+            var_strength    = var_strength,
             options         = options_mgr.as_dict(), 
             sde_noise       = sde_noise, 
             sde_noise_steps = sde_noise_steps, 
