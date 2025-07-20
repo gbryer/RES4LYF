@@ -296,8 +296,8 @@ class ClownOptions_DetailBoost_Beta:
         
         noise_scaling_prepend = torch.zeros((noise_scaling_start_step,), dtype=default_dtype, device=default_device)
         
-        noise_scaling_weights = torch.cat((noise_scaling_prepend, noise_scaling_weights), dim=0)
-        noise_scaling_etas    = torch.cat((noise_scaling_prepend, noise_scaling_etas),    dim=0)
+        noise_scaling_weights = torch.cat((noise_scaling_prepend, noise_scaling_weights.to(default_device)), dim=0)
+        noise_scaling_etas    = torch.cat((noise_scaling_prepend, noise_scaling_etas.to(default_device)),    dim=0)
 
         if noise_scaling_weights.shape[-1] > noise_scaling_end_step:
             noise_scaling_weights = noise_scaling_weights[:noise_scaling_end_step]
