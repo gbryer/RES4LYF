@@ -91,8 +91,6 @@ class SharkSampler:
                 "noise_type_init": (NOISE_GENERATOR_NAMES_SIMPLE, {"default": "gaussian"}),
                 "noise_stdev":     ("FLOAT",                      {"default": 1.0, "min": -10000.0, "max": 10000.0, "step":0.01, "round": False, }),
                 "noise_seed":      ("INT",                        {"default": 0,   "min": -1,       "max": 0xffffffffffffffff}),
-                "var_seed":        ("INT",                        {"default": -1,  "min": -1,       "max": 0xffffffffffffffff, "tooltip": "Variation seed for SwarmUI-style noise blending. Set to -1 to disable."}),
-                "var_strength":    ("FLOAT",                      {"default": 0.0, "min": 0.0,      "max": 1.0,      "step":0.01, "round": False, "tooltip": "Strength of variation seed blending (0.0 = base seed only, 1.0 = variation seed only)"}),
                 "sampler_mode":    (['unsample', 'standard', 'resample'], {"default": "standard"}),
                 "scheduler":       (get_res4lyf_scheduler_list(), {"default": "beta57"},),
                 "steps":           ("INT",                        {"default": 30,  "min": 1,        "max": 10000.0}),
@@ -149,8 +147,6 @@ class SharkSampler:
             k_init             : float                  =  1.0,
             cfgpp              : float                  =  0.0,
             noise_seed         : int                    = -1,
-            var_seed           : int                    = -1,
-            var_strength       : float                  =  0.0,
             options                                     = None,
             sde_noise                                   = None,
             sde_noise_steps    : int                    =  1,
@@ -192,6 +188,8 @@ class SharkSampler:
             d_noise         = options_mgr.get('d_noise',          d_noise)
             alpha_init      = options_mgr.get('alpha_init',       alpha_init)
             k_init          = options_mgr.get('k_init',           k_init)
+            var_seed        = options_mgr.get('var_seed',         -1)
+            var_strength    = options_mgr.get('var_strength',     0.0)
             sde_noise       = options_mgr.get('sde_noise',        sde_noise)
             sde_noise_steps = options_mgr.get('sde_noise_steps',  sde_noise_steps)
             rebounds        = options_mgr.get('rebounds',         rebounds)
@@ -925,8 +923,6 @@ class SharkSampler_Beta:
                 "denoise":         ("FLOAT",                      {"default": 1.0, "min": -10000.0, "max": 10000.0, "step":0.01}),
                 "cfg":             ("FLOAT",                      {"default": 5.5, "min": -10000.0, "max": 10000.0, "step":0.01, "round": False, "tooltip": "Negative values use channelwise CFG." }),
                 "seed":            ("INT",                        {"default": 0,   "min": -1,       "max": 0xffffffffffffffff}),
-                "var_seed":        ("INT",                        {"default": -1,  "min": -1,       "max": 0xffffffffffffffff, "tooltip": "Variation seed for SwarmUI-style noise blending. Set to -1 to disable."}),
-                "var_strength":    ("FLOAT",                      {"default": 0.0, "min": 0.0,      "max": 1.0,      "step":0.01, "round": False, "tooltip": "Strength of variation seed blending (0.0 = base seed only, 1.0 = variation seed only)"}),
                 "sampler_mode": (['unsample', 'standard', 'resample'], {"default": "standard"}),
                 },
             "optional": {
@@ -976,8 +972,6 @@ class SharkSampler_Beta:
             k_init          : float                  =  1.0,
             cfgpp           : float                  =  0.0,
             seed            : int                    = -1,
-            var_seed        : int                    = -1,
-            var_strength    : float                  =  0.0,
             options                                  = None,
             sde_noise                                = None,
             sde_noise_steps : int                    =  1,
@@ -988,6 +982,10 @@ class SharkSampler_Beta:
         
 
         options_mgr = OptionsManager(options, **kwargs)
+        
+        # Get variation seed parameters from options
+        var_seed     = options_mgr.get('var_seed',     -1)
+        var_strength = options_mgr.get('var_strength', 0.0)
         
         if denoise < 0:
             denoise_alt = -denoise
@@ -1433,8 +1431,6 @@ class ClownsharKSampler_Beta:
                     "denoise":      ("FLOAT",                      {"default": 1.0, "min": -10000, "max": MAX_STEPS, "step":0.01}),
                     "cfg":          ("FLOAT",                      {"default": 5.5, "min": -100.0, "max": 100.0,     "step":0.01, "round": False, }),
                     "seed":         ("INT",                        {"default": 0,   "min": -1,     "max": 0xffffffffffffffff}),
-                    "var_seed":     ("INT",                        {"default": -1,  "min": -1,     "max": 0xffffffffffffffff, "tooltip": "Variation seed for SwarmUI-style noise blending. Set to -1 to disable."}),
-                    "var_strength": ("FLOAT",                      {"default": 0.0, "min": 0.0,    "max": 1.0,      "step":0.01, "round": False, "tooltip": "Strength of variation seed blending (0.0 = base seed only, 1.0 = variation seed only)"}),
                     "sampler_mode": (['unsample', 'standard', 'resample'], {"default": "standard"}),
                     "bongmath":     ("BOOLEAN",                    {"default": True}),
                     },
@@ -1471,8 +1467,6 @@ class ClownsharKSampler_Beta:
             scheduler                     : str                    = "beta57", 
             cfg                           : float                  = 1.0, 
             seed                          : int                    = -1, 
-            var_seed                      : int                    = -1,
-            var_strength                  : float                  = 0.0,
             positive                                               = None, 
             negative                                               = None, 
             latent_image                  : Optional[dict[Tensor]] = None, 
@@ -1567,6 +1561,10 @@ class ClownsharKSampler_Beta:
         
         options_mgr = OptionsManager(options, **kwargs)
         extra_options    += "\n" + options_mgr.get('extra_options', "")
+        
+        # Get variation seed parameters from options
+        var_seed     = options_mgr.get('var_seed',     -1)
+        var_strength = options_mgr.get('var_strength', 0.0)
 
         #if model is None:
         #    model = latent_image['model']
@@ -1919,8 +1917,6 @@ class ClownSampler_Beta:
             scheduler                     : str                    = "beta57", 
             cfg                           : float                  = 1.0, 
             seed                          : int                    = -1, 
-            var_seed                      : int                    = -1,
-            var_strength                  : float                  = 0.0,
             positive                                               = None, 
             negative                                               = None, 
             latent_image                  : Optional[dict[Tensor]] = None, 
@@ -2004,6 +2000,9 @@ class ClownSampler_Beta:
         options_mgr = OptionsManager(options, **kwargs)
         extra_options    += "\n" + options_mgr.get('extra_options', "")
         
+        # Get variation seed parameters from options
+        var_seed     = options_mgr.get('var_seed',     -1)
+        var_strength = options_mgr.get('var_strength', 0.0)
         
         # defaults for ClownSampler
         eta_substep = eta

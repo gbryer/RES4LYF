@@ -159,6 +159,40 @@ class ClownOptions_StepSize_Beta:
             )
 
 
+
+class ClownOptions_VariationSeed_Beta:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required":
+                    {
+                    "var_seed":     ("INT",   {"default": -1,  "min": -1, "max": 0xffffffffffffffff, "control_after_generate": True, "tooltip": "Variation seed for SwarmUI-style noise blending. Set to -1 to disable."}),
+                    "var_strength": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step":0.01, "round": False, "tooltip": "Strength of variation seed blending (0.0 = base seed only, 1.0 = variation seed only)"}),
+                    },
+                "optional": 
+                    {
+                    "options": ("OPTIONS", ),   
+                    }
+                }
+
+    RETURN_TYPES = ("OPTIONS",)
+    RETURN_NAMES = ("options",)
+    FUNCTION     = "main"
+    CATEGORY     = "RES4LYF/sampler_options"
+    
+    def main(self,
+            var_seed      : int   = -1,
+            var_strength  : float = 0.0,
+            options             = None,
+            ): 
+        
+        options = options if options is not None else {}
+        
+        options['var_seed']     = var_seed
+        options['var_strength'] = var_strength
+
+        return (options,)
+
+
 @dataclass
 class DetailBoostOptions:
     noise_scaling_weight : float = 0.0
@@ -4633,6 +4667,3 @@ class ClownStyle_TransformerBlock_UNet:
         blocks['StyleMMDiT'] = StyleMMDiT
 
         return (blocks, )
-
-
-
