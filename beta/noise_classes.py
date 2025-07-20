@@ -698,14 +698,22 @@ def prepare_noise(latent_image, seed, noise_type, noise_inds=None, alpha=1.0, k=
         
         # SwarmUI-style variation seed implementation
         if var_seed is not None and var_strength > 0.0:
-            # Generate variation noise with different seed
-            var_noise_func = NOISE_GENERATOR_CLASSES.get(noise_type)(x=latent_image, seed=var_seed, sigma_min=0.0291675, sigma_max=14.614642)
+            batch_size = base_noise.shape[0]
+            var_noises = []
             
-            if noise_type == "fractal":
-                var_noise_func.alpha = alpha
-                var_noise_func.k = k
+            # Generate different variation noise for each batch item
+            for i in range(batch_size):
+                # Add batch index to variation seed for different patterns per batch item
+                var_noise_func = NOISE_GENERATOR_CLASSES.get(noise_type)(x=latent_image[i:i+1], seed=var_seed + i, sigma_min=0.0291675, sigma_max=14.614642)
                 
-            var_noise = var_noise_func(sigma=14.614642, sigma_next=0.0291675)
+                if noise_type == "fractal":
+                    var_noise_func.alpha = alpha
+                    var_noise_func.k = k
+                    
+                var_noise = var_noise_func(sigma=14.614642, sigma_next=0.0291675)
+                var_noises.append(var_noise)
+            
+            var_noise = torch.cat(var_noises, axis=0)
             
             # SLERP blend between base and variation noise
             from ..latents import slerp
@@ -725,17 +733,18 @@ def prepare_noise(latent_image, seed, noise_type, noise_inds=None, alpha=1.0, k=
     
     # Apply variation blending to batch noises if specified
     if var_seed is not None and var_strength > 0.0:
-        var_noise_func = NOISE_GENERATOR_CLASSES.get(noise_type)(x=latent_image, seed=var_seed, sigma_min=0.0291675, sigma_max=14.614642)
-        
-        if noise_type == "fractal":
-            var_noise_func.alpha = alpha
-            var_noise_func.k = k
-            
         var_noises = []
-        for i in range(unique_inds[-1]+1):
+        for idx, i in enumerate(unique_inds):
+            # Add batch index to variation seed for different patterns per batch item
+            var_noise_func = NOISE_GENERATOR_CLASSES.get(noise_type)(x=latent_image, seed=var_seed + i, sigma_min=0.0291675, sigma_max=14.614642)
+            
+            if noise_type == "fractal":
+                var_noise_func.alpha = alpha
+                var_noise_func.k = k
+                
             var_noise = var_noise_func(size = [1] + list(latent_image.size())[1:], dtype=latent_image.dtype, layout=latent_image.layout, device=latent_image.device)
-            if i in unique_inds:
-                var_noises.append(var_noise)
+            var_noises.append(var_noise)
+            
         var_noises = [var_noises[i] for i in inverse]
         var_noises = torch.cat(var_noises, axis=0)
         
