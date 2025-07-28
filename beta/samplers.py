@@ -188,8 +188,8 @@ class SharkSampler:
             d_noise         = options_mgr.get('d_noise',          d_noise)
             alpha_init      = options_mgr.get('alpha_init',       alpha_init)
             k_init          = options_mgr.get('k_init',           k_init)
-            var_seed        = options_mgr.get('var_seed',         -1)
-            var_strength    = options_mgr.get('var_strength',     0.0)
+            var_seeds       = options_mgr.get('var_seeds',        None)
+            var_strengths   = options_mgr.get('var_strengths',    None)
             sde_noise       = options_mgr.get('sde_noise',        sde_noise)
             sde_noise_steps = options_mgr.get('sde_noise_steps',  sde_noise_steps)
             rebounds        = options_mgr.get('rebounds',         rebounds)
@@ -544,7 +544,7 @@ class SharkSampler:
                         RESplain("Initial latent noise seed: ", seed, debug=True)
                         
                         # SwarmUI-style variation seed implementation
-                        if var_seed != -1 and var_strength > 0.0:
+                        if var_seeds is not None and var_strengths is not None and len(var_seeds) > 0 and any(s > 0.0 for s in var_strengths):
                             from .noise_classes import prepare_noise
                             # Use prepare_noise with variation parameters
                             noise = prepare_noise(
@@ -553,8 +553,8 @@ class SharkSampler:
                                 noise_type=noise_type_init, 
                                 alpha=alpha_init, 
                                 k=k_init,
-                                var_seed=var_seed,
-                                var_strength=var_strength
+                                var_seeds=var_seeds,
+                                var_strengths=var_strengths
                             )
                             # Scale the noise appropriately  
                             noise = noise * (sigma_max * noise_stdev) / sigma_max if sigma_max != 0 else noise
@@ -984,8 +984,8 @@ class SharkSampler_Beta:
         options_mgr = OptionsManager(options, **kwargs)
         
         # Get variation seed parameters from options
-        var_seed     = options_mgr.get('var_seed',     -1)
-        var_strength = options_mgr.get('var_strength', 0.0)
+        var_seeds    = options_mgr.get('var_seeds',    None)
+        var_strengths = options_mgr.get('var_strengths', None)
         
         if denoise < 0:
             denoise_alt = -denoise
@@ -1563,8 +1563,8 @@ class ClownsharKSampler_Beta:
         extra_options    += "\n" + options_mgr.get('extra_options', "")
         
         # Get variation seed parameters from options
-        var_seed     = options_mgr.get('var_seed',     -1)
-        var_strength = options_mgr.get('var_strength', 0.0)
+        var_seeds    = options_mgr.get('var_seeds',    None)
+        var_strengths = options_mgr.get('var_strengths', None)
 
         #if model is None:
         #    model = latent_image['model']
@@ -2001,8 +2001,8 @@ class ClownSampler_Beta:
         extra_options    += "\n" + options_mgr.get('extra_options', "")
         
         # Get variation seed parameters from options
-        var_seed     = options_mgr.get('var_seed',     -1)
-        var_strength = options_mgr.get('var_strength', 0.0)
+        var_seeds    = options_mgr.get('var_seeds',    None)
+        var_strengths = options_mgr.get('var_strengths', None)
         
         # defaults for ClownSampler
         eta_substep = eta

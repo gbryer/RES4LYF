@@ -187,8 +187,57 @@ class ClownOptions_VariationSeed_Beta:
         
         options = options if options is not None else {}
         
-        options['var_seed']     = var_seed
-        options['var_strength'] = var_strength
+        options['var_seeds']     = [var_seed]
+        options['var_strengths'] = [var_strength]
+
+        return (options,)
+
+
+class ClownOptions_VariationSeeds_Beta:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required":
+                    {
+                    "var_seeds":     ("STRING", {"default": "123,456,789", "tooltip": "Comma-separated list of variation seeds for stacked noise blending"}),
+                    "var_strengths": ("STRING", {"default": "0.3,0.5,0.2", "tooltip": "Comma-separated list of variation strengths (0.0-1.0) corresponding to each seed"}),
+                    },
+                "optional": 
+                    {
+                    "options": ("OPTIONS", ),   
+                    }
+                }
+
+    RETURN_TYPES = ("OPTIONS",)
+    RETURN_NAMES = ("options",)
+    FUNCTION     = "main"
+    CATEGORY     = "RES4LYF/sampler_options"
+    
+    def main(self,
+            var_seeds     : str = "123,456,789",
+            var_strengths : str = "0.3,0.5,0.2",
+            options             = None,
+            ): 
+        
+        options = options if options is not None else {}
+        
+        # Parse comma-separated strings into arrays
+        try:
+            seed_list = [int(s.strip()) for s in var_seeds.split(',') if s.strip()]
+            strength_list = [float(s.strip()) for s in var_strengths.split(',') if s.strip()]
+        except ValueError as e:
+            raise ValueError(f"Invalid variation seed/strength format: {e}")
+        
+        # Validate arrays have matching lengths
+        if len(seed_list) != len(strength_list):
+            raise ValueError(f"Variation seeds ({len(seed_list)}) and strengths ({len(strength_list)}) must have matching lengths")
+        
+        # Validate strength values
+        for i, strength in enumerate(strength_list):
+            if not (0.0 <= strength <= 1.0):
+                raise ValueError(f"Variation strength {i} ({strength}) must be between 0.0 and 1.0")
+        
+        options['var_seeds']     = seed_list
+        options['var_strengths'] = strength_list
 
         return (options,)
 
