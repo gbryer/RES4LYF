@@ -45,6 +45,7 @@ def add_beta(NODE_CLASS_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS, extra_samplers):
         
         "ClownOptions_StepSize_Beta"      : samplers_extensions.ClownOptions_StepSize_Beta,
         "ClownOptions_VariationSeed_Beta" : samplers_extensions.ClownOptions_VariationSeed_Beta,
+        "ClownOptions_VariationSeeds_Beta": samplers_extensions.ClownOptions_VariationSeeds_Beta,
         "ClownOptions_SigmaScaling_Beta"  : samplers_extensions.ClownOptions_SigmaScaling_Beta,
 
         "ClownOptions_Momentum_Beta"      : samplers_extensions.ClownOptions_Momentum_Beta,
@@ -136,6 +137,7 @@ def add_beta(NODE_CLASS_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS, extra_samplers):
             "ClownOptions_SDE_Beta"                 : "ClownOptions SDE",
             "ClownOptions_StepSize_Beta"            : "ClownOptions Step Size",
             "ClownOptions_VariationSeed_Beta"       : "ClownOptions Variation Seed",
+            "ClownOptions_VariationSeeds_Beta"      : "ClownOptions Variation Seeds",
             "ClownOptions_DetailBoost_Beta"         : "ClownOptions Detail Boost",
             "ClownOptions_SigmaScaling_Beta"        : "ClownOptions Sigma Scaling",
             "ClownOptions_Momentum_Beta"            : "ClownOptions Momentum",
